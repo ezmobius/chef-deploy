@@ -13,3 +13,7 @@ from cap and adapts it to work without cap and under chef
     shallow_clone true
     action :manage
   end
+
+
+Currently only supports doing the cached git checkout, rsyncing it into place and doing the symlink dance.
+Does not restart servers or have hooks(yet)
