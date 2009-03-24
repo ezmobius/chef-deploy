@@ -6,10 +6,10 @@ A gem that provides resources and providers for deploying ruby web apps from che
 Uses the same directory layout as capistrano and steals the git remote cached deploy strategy 
 from cap and adapts it to work without cap and under chef
 
-deploy "/data/myapp" do
-  repo "git://github.com/engineyard/rack-app.git"
-  branch "HEAD"
-  enable_submodules true
-  shallow_clone true
-  action :manage
-end
+  deploy "/data/myapp" do
+    repo "git://github.com/engineyard/rack-app.git"
+    branch "HEAD"
+    enable_submodules true
+    shallow_clone true
+    action :manage
+  end
