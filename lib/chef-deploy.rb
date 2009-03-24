@@ -95,7 +95,8 @@ class Chef
     class Deploy < Chef::Provider 
       
       def load_current_resource
-        
+        FileUtils.mkdir_p "#{@new_resource.name}/shared"
+        FileUtils.mkdir_p "#{@new_resource.name}/releases"
       end
       
       def action_manage
