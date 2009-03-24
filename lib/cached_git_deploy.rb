@@ -6,7 +6,7 @@ class CachedGitDeploy
   def deploy
     @buffer = []
     @configuration[:release_path] = "#{@configuration[:deploy_to]}/releases/#{Time.now.to_i}"
-    @configuration[:revision] = source.query_revision('HEAD') {|cmd| run cmd}  
+    @configuration[:revision] ||= source.query_revision('HEAD') {|cmd| run cmd}  
     run(update_repository_cache)
     run(copy_repository_cache)
     symlink
