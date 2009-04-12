@@ -1,9 +1,10 @@
-require File.join(File.dirname(__FILE__), 'git')
-require File.join(File.dirname(__FILE__), 'cached_git_deploy')
+require File.join(File.dirname(__FILE__), 'chef-deploy/git')
+require File.join(File.dirname(__FILE__), 'chef-deploy/cached_git_deploy')
 
-# git_deploy "/data/#{app}" do
+# deploy "/data/#{app}" do
 #   repo "git://github.com/engineyard/rack-app.git"
 #   branch "HEAD"
+#   user "ez"
 #   enable_submodules true
 #   shallow_clone true
 #   action :manage
@@ -33,6 +34,14 @@ class Chef
         )
       end
       
+      def user(arg=nil)
+        set_or_return(
+          :user,
+          arg,
+          :kind_of => [ String ]
+        )
+      end
+      
       def enable_submodules(arg=false)
         set_or_return(
           :enable_submodules,
@@ -48,13 +57,6 @@ class Chef
           :kind_of => [ TrueClass, FalseClass ]
         )
       end
-      
-      # :repository_cache
-      # :shared_path
-      # :repository
-      # :release_path
-      # :copy_exclude
-      # :revision
 
       def repository_cache(arg=nil)
         set_or_return(
@@ -101,7 +103,8 @@ class Chef
       
       def action_manage
         Chef::Log.info "Running a new deploy\nto: #{@new_resource.name}\nrepo: #{@new_resource.repo}"
-        dep = CachedGitDeploy.new :repository => @new_resource.repo,
+        dep = CachedGitDeploy.new :user       => @new_resource.user
+                                  :repository => @new_resource.repo,
                                   :deploy_to  => @new_resource.name,
                                   :repository_cache  => @new_resource.repository_cache,
                                   :copy_exclude  => @new_resource.copy_exclude,
