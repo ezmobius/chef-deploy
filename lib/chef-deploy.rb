@@ -1,5 +1,5 @@
 require File.join(File.dirname(__FILE__), 'chef-deploy/git')
-require File.join(File.dirname(__FILE__), 'chef-deploy/cached_git_deploy')
+require File.join(File.dirname(__FILE__), 'chef-deploy/cached_deploy')
 
 # deploy "/data/#{app}" do
 #   repo "git://github.com/engineyard/rack-app.git"
@@ -29,6 +29,22 @@ class Chef
       def repo(arg=nil)
         set_or_return(
           :repo,
+          arg,
+          :kind_of => [ String ]
+        )
+      end
+      
+      def migrate(arg=nil)
+        set_or_return(
+          :migrate,
+          arg,
+          :kind_of => [ TrueClass, FalseClass ]
+        )
+      end
+      
+      def migration_command(arg=nil)
+        set_or_return(
+          :migration_command,
           arg,
           :kind_of => [ String ]
         )
@@ -89,6 +105,14 @@ class Chef
           :kind_of => [ String ]
         )
       end
+      
+      def environment(arg=nil)
+        set_or_return(
+          :environment,
+          arg,
+          :kind_of => [ String ]
+        )
+      end
  
     end
   end
@@ -102,16 +126,21 @@ class Chef
       end
       
       def action_manage
+        Chef::Log.level(:debug)
         Chef::Log.info "Running a new deploy\nto: #{@new_resource.name}\nrepo: #{@new_resource.repo}"
-        dep = CachedGitDeploy.new :user       => @new_resource.user
-                                  :repository => @new_resource.repo,
-                                  :deploy_to  => @new_resource.name,
-                                  :repository_cache  => @new_resource.repository_cache,
-                                  :copy_exclude  => @new_resource.copy_exclude,
-                                  :revision  => @new_resource.revision,
-                                  :git_enable_submodules => @new_resource.enable_submodules,
-                                  :git_shallow_clone  => @new_resource.shallow_clone
+        dep = CachedDeploy.new  :user       => @new_resource.user,
+                                :repository => @new_resource.repo,
+                                :environment => @new_resource.environment,
+                                :migration_command => @new_resource.migration_command,
+                                :migrate => @new_resource.migrate,
+                                :deploy_to  => @new_resource.name,
+                                :repository_cache  => @new_resource.repository_cache,
+                                :copy_exclude  => @new_resource.copy_exclude,
+                                :revision  => @new_resource.revision,
+                                :git_enable_submodules => @new_resource.enable_submodules,
+                                :git_shallow_clone  => @new_resource.shallow_clone
         dep.deploy
+        Chef::Log.level(Chef::Config[:log_level])
       end
     end
   end

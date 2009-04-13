@@ -7,33 +7,42 @@ class CachedDeploy
     @buffer = []
     @configuration[:release_path] = "#{@configuration[:deploy_to]}/releases/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}"
     @configuration[:revision] ||= source.query_revision('HEAD') {|cmd| run cmd}
-    puts "updating the cached checkout"
+    Chef::Log.info "updating the cached checkout"
     run(update_repository_cache)
-    puts "copying the cached version to #{configuration[:release_path]}"
+    Chef::Log.info "copying the cached version to #{configuration[:release_path]}"
     run(copy_repository_cache)
+    migrate
     symlink
     @buffer
   end
   
   def latest_release
-    all_releases.last
+    File.join(release_path, all_releases.last)
   end
   
   def previous_release
-    all_releases[-2]
+    File.join(release_path, all_releases[-2])
   end
   
   def oldest_release
-    all_releases.first
+    File.join(release_path, all_releases.first)
   end
   
   def all_releases
-    File.join(release_path, `ls #{release_path}`.split("\n").sort
+    `ls #{release_path}`.split("\n").sort
   end
   
   def cleanup
     while all_releases.size >= 5
       FileUtils.rm_rf oldest_release
+    end
+  end
+  
+  def migrate
+    if @configuration[:migrate]
+      run "ln -nfs #{shared_path}/config/database.yml #{latest_release}/config/database.yml"
+      Chef::Log.info "Migrating: cd #{latest_release} && RAILS_ENV=#{@configuration[:environment]} #{@configuration[:migration_command]}"
+      Chef::Log.info run("cd #{latest_release} && RAILS_ENV=#{@configuration[:environment]} #{@configuration[:migration_command]}")
     end
   end
   
@@ -54,7 +63,7 @@ class CachedDeploy
   end
   
   def symlink
-    puts "symlinking and finishing deploy"
+    Chef::Log.info "symlinking and finishing deploy"
     symlink = false
     begin
       run [ "chmod -R g+w #{latest_release}",
