@@ -11,9 +11,21 @@ class CachedDeploy
     run(update_repository_cache)
     Chef::Log.info "copying the cached version to #{configuration[:release_path]}"
     run(copy_repository_cache)
+    callback(:before_migrate)
     migrate
+    callback(:before_symlink)
     symlink
+    callback(:before_restart)
     @buffer
+  end
+  
+  # before_symlink
+  # before_restart
+  def callback(what)
+    if File.exist?("#{latest_release}/deploy/#{what}.rb")
+      Chef::Log.info "running deploy hook: #{latest_release}/deploy/#{what}.rb"
+      Chef::Log.info run("cd #{latest_release} && ruby deploy/#{what}.rb #{@configuration[:environment]}")
+    end
   end
   
   def latest_release
