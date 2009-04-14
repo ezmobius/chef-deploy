@@ -6,6 +6,9 @@ require File.join(File.dirname(__FILE__), 'chef-deploy/cached_deploy')
 #   branch "HEAD"
 #   user "ez"
 #   enable_submodules true
+#   migrate true
+#   migration_command "rake db:migrate"
+#   environment "production"
 #   shallow_clone true
 #   action :manage
 # end
@@ -29,6 +32,14 @@ class Chef
       def repo(arg=nil)
         set_or_return(
           :repo,
+          arg,
+          :kind_of => [ String ]
+        )
+      end
+      
+      def restart_command(arg=nil)
+        set_or_return(
+          :restart_command,
           arg,
           :kind_of => [ String ]
         )
@@ -129,6 +140,7 @@ class Chef
         Chef::Log.level(:debug)
         Chef::Log.info "Running a new deploy\nto: #{@new_resource.name}\nrepo: #{@new_resource.repo}"
         dep = CachedDeploy.new  :user       => @new_resource.user,
+                                :restart_command => @new_resource.restart_command,
                                 :repository => @new_resource.repo,
                                 :environment => @new_resource.environment,
                                 :migration_command => @new_resource.migration_command,

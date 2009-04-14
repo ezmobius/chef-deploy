@@ -1,10 +1,12 @@
 # stolen wholesale from capistrano, thanks Jamis!
 
+class ChefDeployFailure < StandardError
+end
+
 class CachedDeploy
   # Executes the SCM command for this strategy and writes the REVISION
   # mark file to each host.
   def deploy
-    @buffer = []
     @configuration[:release_path] = "#{@configuration[:deploy_to]}/releases/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}"
     @configuration[:revision] ||= source.query_revision('HEAD') {|cmd| run cmd}
     Chef::Log.info "updating the cached checkout"
@@ -16,7 +18,14 @@ class CachedDeploy
     callback(:before_symlink)
     symlink
     callback(:before_restart)
-    @buffer
+    restart
+  end
+  
+  def restart
+    unless @configuration[:restart_command].empty?
+      Chef::Log.info "restarting app: #{latest_release}"
+      Chef::Log.info run(@configuration[:restart_command])
+    end
   end
   
   # before_symlink
@@ -101,7 +110,7 @@ class CachedDeploy
   
   def run(cmd)
     res = `#{cmd}`
-    @buffer << res
+    raise ChefDeployFailure unless $? == 0
     res
   end
   
