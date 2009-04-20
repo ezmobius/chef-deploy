@@ -37,6 +37,15 @@ class Chef
         )
       end
       
+      
+      def role(arg=nil)
+        set_or_return(
+          :role,
+          arg,
+          :kind_of => [ String ]
+        )
+      end
+      
       def restart_command(arg=nil)
         set_or_return(
           :restart_command,
@@ -140,6 +149,7 @@ class Chef
         Chef::Log.level(:debug)
         Chef::Log.info "Running a new deploy\nto: #{@new_resource.name}\nrepo: #{@new_resource.repo}"
         dep = CachedDeploy.new  :user       => @new_resource.user,
+                                :role       => @new_resource.role,
                                 :restart_command => @new_resource.restart_command,
                                 :repository => @new_resource.repo,
                                 :environment => @new_resource.environment,

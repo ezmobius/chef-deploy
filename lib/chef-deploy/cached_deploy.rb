@@ -19,6 +19,8 @@ class CachedDeploy
     symlink
     callback(:before_restart)
     restart
+    callback(:after_restart)
+    cleanup
   end
   
   def restart
@@ -33,7 +35,7 @@ class CachedDeploy
   def callback(what)
     if File.exist?("#{latest_release}/deploy/#{what}.rb")
       Chef::Log.info "running deploy hook: #{latest_release}/deploy/#{what}.rb"
-      Chef::Log.info run("cd #{latest_release} && ruby deploy/#{what}.rb #{@configuration[:environment]}")
+      Chef::Log.info run("cd #{latest_release} && ruby deploy/#{what}.rb #{@configuration[:environment]} #{@configuration[:role]}")
     end
   end
   
