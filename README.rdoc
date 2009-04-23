@@ -15,7 +15,8 @@ from cap and adapts it to work without cap and under chef
    migration_command "rake db:migrate"
    environment "production"
    shallow_clone true
-   action :manage
+   revision '0xbeadbeef'
+   action :deploy # or :rollback
  end
 
 

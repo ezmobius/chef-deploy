@@ -10,7 +10,8 @@ require File.join(File.dirname(__FILE__), 'chef-deploy/cached_deploy')
 #   migration_command "rake db:migrate"
 #   environment "production"
 #   shallow_clone true
-#   action :manage
+#   action :deploy # or :rollback
+#   restart_command "touch tmp/restart.txt"
 # end
 
 class Chef
@@ -25,8 +26,9 @@ class Chef
         @repository_cache = 'cached-copy'
         @copy_exclude = []
         @revision = nil
-        @action = :manage
-        @allowed_actions.push(:manage)
+        @action = :deploy
+        @allowed_actions.push(:deploy)
+        @allowed_actions.push(:rollback)
       end
       
       def repo(arg=nil)
@@ -118,7 +120,7 @@ class Chef
         )
       end
             
-      def branch(arg="HEAD")
+      def branch(arg=nil)
         set_or_return(
           :branch,
           arg,
@@ -143,14 +145,9 @@ class Chef
       def load_current_resource
         FileUtils.mkdir_p "#{@new_resource.name}/shared"
         FileUtils.mkdir_p "#{@new_resource.name}/releases"
-      end
-      
-      def action_manage
-        Chef::Log.level(:debug)
-        Chef::Log.info "Running a new deploy\nto: #{@new_resource.name}\nrepo: #{@new_resource.repo}"
-        dep = CachedDeploy.new  :user       => @new_resource.user,
+        @dep = CachedDeploy.new  :user       => @new_resource.user,
                                 :role       => @new_resource.role,
-                                :branch     => @new_resource.branch,
+                                :branch     => (@new_resource.branch || 'HEAD'),
                                 :restart_command => @new_resource.restart_command,
                                 :repository => @new_resource.repo,
                                 :environment => @new_resource.environment,
@@ -159,10 +156,22 @@ class Chef
                                 :deploy_to  => @new_resource.name,
                                 :repository_cache  => @new_resource.repository_cache,
                                 :copy_exclude  => @new_resource.copy_exclude,
-                                :revision  => @new_resource.revision,
+                                :revision  => (@new_resource.revision || ''),
                                 :git_enable_submodules => @new_resource.enable_submodules,
                                 :git_shallow_clone  => @new_resource.shallow_clone
-        dep.deploy
+      end
+      
+      def action_deploy
+        Chef::Log.level(:debug)
+        Chef::Log.info "Running a new deploy\nto: #{@new_resource.name}\nrepo: #{@new_resource.repo}"
+        @dep.deploy
+        Chef::Log.level(Chef::Config[:log_level])
+      end
+      
+      def action_rollback
+        Chef::Log.level(:debug)
+        Chef::Log.info "Rolling back deploy\nto: #{@new_resource.name}\nrepo: #{@new_resource.repo}"
+        @dep.rollback
         Chef::Log.level(Chef::Config[:log_level])
       end
     end

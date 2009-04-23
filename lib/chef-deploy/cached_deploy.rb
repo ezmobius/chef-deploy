@@ -8,7 +8,10 @@ class CachedDeploy
   # mark file to each host.
   def deploy
     @configuration[:release_path] = "#{@configuration[:deploy_to]}/releases/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}"
-    @configuration[:revision] ||= source.query_revision(@configuration[:branch]) {|cmd| run cmd}
+    if @configuration[:revision] == ''
+       @configuration[:revision] = source.query_revision(@configuration[:branch]) {|cmd| run cmd}
+    end
+    Chef::Log.info "deploying branch: #{@configuration[:branch]} rev: #{@configuration[:revision]}"
     Chef::Log.info "updating the cached checkout"
     run(update_repository_cache)
     Chef::Log.info "copying the cached version to #{configuration[:release_path]}"
@@ -26,7 +29,7 @@ class CachedDeploy
   def restart
     unless @configuration[:restart_command].empty?
       Chef::Log.info "restarting app: #{latest_release}"
-      Chef::Log.info run(@configuration[:restart_command])
+      Chef::Log.info run("cd #{current_path} && #{@configuration[:restart_command]}")
     end
   end
   
@@ -40,25 +43,34 @@ class CachedDeploy
   end
   
   def latest_release
-    File.join(release_path, all_releases.last)
+    all_releases.last
   end
   
-  def previous_release
-    File.join(release_path, all_releases[-2])
+  def previous_release(current=latest_release)
+    index = all_releases.index(current)
+    all_releases[index-1]
   end
   
   def oldest_release
-    File.join(release_path, all_releases.first)
+    all_releases.first
   end
   
   def all_releases
-    `ls #{release_path}`.split("\n").sort
+    `ls #{release_path}`.split("\n").sort.map{|r| File.join(release_path, r)}
   end
   
   def cleanup
     while all_releases.size >= 5
       FileUtils.rm_rf oldest_release
     end
+  end
+  
+  def rollback
+    Chef::Log.info "rolling back to previous release"
+    symlink(previous_release)
+    FileUtils.rm_rf latest_release
+    Chef::Log.info "restarting with previous release"
+    restart
   end
   
   def migrate
@@ -85,27 +97,27 @@ class CachedDeploy
     "#{@configuration[:deploy_to]}/releases"
   end
   
-  def symlink
+  def symlink(release_to_link=latest_release)
     Chef::Log.info "symlinking and finishing deploy"
     symlink = false
     begin
-      run [ "chmod -R g+w #{latest_release}",
-            "rm -rf #{latest_release}/log #{latest_release}/public/system #{latest_release}/tmp/pids",
-            "mkdir -p #{latest_release}/tmp",
-            "ln -nfs #{shared_path}/log #{latest_release}/log",
-            "mkdir -p #{latest_release}/public",
-            "mkdir -p #{latest_release}/config",
-            "ln -nfs #{shared_path}/system #{latest_release}/public/system",
-            "ln -nfs #{shared_path}/pids #{latest_release}/tmp/pids",
-            "ln -nfs #{shared_path}/config/database.yml #{latest_release}/config/database.yml",
-            "chown -R #{user}:#{user} #{latest_release}"
+      run [ "chmod -R g+w #{release_to_link}",
+            "rm -rf #{release_to_link}/log #{release_to_link}/public/system #{release_to_link}/tmp/pids",
+            "mkdir -p #{release_to_link}/tmp",
+            "ln -nfs #{shared_path}/log #{release_to_link}/log",
+            "mkdir -p #{release_to_link}/public",
+            "mkdir -p #{release_to_link}/config",
+            "ln -nfs #{shared_path}/system #{release_to_link}/public/system",
+            "ln -nfs #{shared_path}/pids #{release_to_link}/tmp/pids",
+            "ln -nfs #{shared_path}/config/database.yml #{release_to_link}/config/database.yml",
+            "chown -R #{user}:#{user} #{release_to_link}"
           ].join(" && ")
 
       symlink = true
-      run "rm -f #{current_path} && ln -nfs #{latest_release} #{current_path} && chown -R #{user}:#{user} #{current_path}"
+      run "rm -f #{current_path} && ln -nfs #{release_to_link} #{current_path} && chown -R #{user}:#{user} #{current_path}"
     rescue => e
-      run "rm -f #{current_path} && ln -nfs #{previous_release} #{current_path} && chown -R #{user}:#{user} #{current_path}" if symlink
-      run "rm -rf #{latest_release}"
+      run "rm -f #{current_path} && ln -nfs #{previous_release(release_to_link)} #{current_path} && chown -R #{user}:#{user} #{current_path}" if symlink
+      run "rm -rf #{release_to_link}"
       raise e
     end
   end

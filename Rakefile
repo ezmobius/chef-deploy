@@ -5,7 +5,7 @@ require 'date'
 require 'spec/rake/spectask'
 
 GEM = "chef-deploy"
-GEM_VERSION = "0.0.5"
+GEM_VERSION = "0.0.8"
 AUTHOR = "Ezra Zygmuntowicz"
 EMAIL = "Your Email"
 HOMEPAGE = "http://example.com"
