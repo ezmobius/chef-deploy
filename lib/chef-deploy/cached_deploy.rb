@@ -8,7 +8,7 @@ class CachedDeploy
   # mark file to each host.
   def deploy
     @configuration[:release_path] = "#{@configuration[:deploy_to]}/releases/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}"
-    @configuration[:revision] ||= source.query_revision('HEAD') {|cmd| run cmd}
+    @configuration[:revision] ||= source.query_revision(@configuration[:branch]) {|cmd| run cmd}
     Chef::Log.info "updating the cached checkout"
     run(update_repository_cache)
     Chef::Log.info "copying the cached version to #{configuration[:release_path]}"

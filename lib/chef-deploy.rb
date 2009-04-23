@@ -118,7 +118,7 @@ class Chef
         )
       end
             
-      def branch(arg=nil)
+      def branch(arg="HEAD")
         set_or_return(
           :branch,
           arg,
@@ -150,6 +150,7 @@ class Chef
         Chef::Log.info "Running a new deploy\nto: #{@new_resource.name}\nrepo: #{@new_resource.repo}"
         dep = CachedDeploy.new  :user       => @new_resource.user,
                                 :role       => @new_resource.role,
+                                :branch     => @new_resource.branch,
                                 :restart_command => @new_resource.restart_command,
                                 :repository => @new_resource.repo,
                                 :environment => @new_resource.environment,
