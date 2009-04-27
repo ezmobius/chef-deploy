@@ -124,7 +124,7 @@ class CachedDeploy
   
   def run(cmd)
     res = `#{cmd}`
-    raise ChefDeployFailure unless $? == 0
+    raise(ChefDeployFailure, res) unless $? == 0
     res
   end
   
