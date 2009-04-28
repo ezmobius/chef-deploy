@@ -41,8 +41,8 @@ class CachedDeploy
       gems.each do |g|
         next if has_gem?(g[:name], g[:version])
         r = Chef::Resource::GemPackage.new(g[:name], nil, @configuration[:node])
-        r.version = g[:version]
-        r.source = "http://gems.github.com"
+        r.version g[:version]
+        r.source "http://gems.github.com"
         resources << r
       end
       resources.each do |r|

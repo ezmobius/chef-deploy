@@ -180,4 +180,4 @@ class Chef
   end
 end
 
-Chef::Platform.platforms[:default].merge! :deploy => Chef::Provider::Deploy
+Chef::Platform.platforms[:default].merge! :deploy => Chef::Provider::Deploy, :gem_package => Chef::Provider::Package::Rubygems
