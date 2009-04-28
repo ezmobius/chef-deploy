@@ -158,7 +158,9 @@ class Chef
                                 :copy_exclude  => @new_resource.copy_exclude,
                                 :revision  => (@new_resource.revision || ''),
                                 :git_enable_submodules => @new_resource.enable_submodules,
-                                :git_shallow_clone  => @new_resource.shallow_clone
+                                :git_shallow_clone  => @new_resource.shallow_clone,
+                                :node => @node,
+                                :new_resource => @new_resource
       end
       
       def action_deploy

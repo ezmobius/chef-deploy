@@ -1,5 +1,5 @@
 # stolen wholesale from capistrano, thanks Jamis!
-
+require 'yaml'
 class ChefDeployFailure < StandardError
 end
 
@@ -16,6 +16,7 @@ class CachedDeploy
     run(update_repository_cache)
     Chef::Log.info "copying the cached version to #{configuration[:release_path]}"
     run(copy_repository_cache)
+    install_gems
     callback(:before_migrate)
     migrate
     callback(:before_symlink)
@@ -31,6 +32,45 @@ class CachedDeploy
       Chef::Log.info "restarting app: #{latest_release}"
       Chef::Log.info run("cd #{current_path} && #{@configuration[:restart_command]}")
     end
+  end
+  
+  def install_gems
+    if File.exist?("#{latest_release}/gems.yml")
+      gems = YAML.load(IO.read("#{latest_release}/gems.yml"))
+      resources = []
+      gems.each do |g|
+        next if has_gem?(g[:name], g[:version])
+        r = Chef::Resource::GemPackage.new(g[:name], nil, @configuration[:node])
+        r.version = g[:version]
+        r.source = "http://gems.github.com"
+        resources << r
+      end
+      resources.each do |r|
+        r.run_action(:install)
+      end
+    end
+  end
+  
+  def has_gem?(name, version=nil)
+    if !$GEM_LIST_DEPLOY
+      gems = {}
+      `gem list --local`.each_line do |line|
+        gems[$1.to_sym] = $2.split(/, /) if line =~ /^(.*) \(([^\)]*)\)$/
+      end
+      $GEM_LIST_DEPLOY = gems
+    end
+    if $GEM_LIST_DEPLOY[name.to_sym]
+      if version
+        if $GEM_LIST_DEPLOY[name.to_sym].include?(version) 
+          Chef::Log.info("Gem: #{name}:#{version} already installed, skipping")
+          return true
+        end  
+      else
+        Chef::Log.info("Gem: #{name} already installed, skipping")
+        return true
+      end
+    end
+    false
   end
   
   # before_symlink
