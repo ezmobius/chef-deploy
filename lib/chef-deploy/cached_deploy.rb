@@ -11,6 +11,7 @@ class CachedDeploy
     if @configuration[:revision] == ''
        @configuration[:revision] = source.query_revision(@configuration[:branch]) {|cmd| run cmd}
     end
+    return if check_current_revision_and_noop_if_same(@configuration[:revision])
     Chef::Log.info "deploying branch: #{@configuration[:branch]} rev: #{@configuration[:revision]}"
     Chef::Log.info "updating the cached checkout"
     run(update_repository_cache)
@@ -46,7 +47,12 @@ class CachedDeploy
         resources << r
       end
       resources.each do |r|
-        r.run_action(:install)
+        begin
+          r.run_action(:install)
+        rescue Chef::Exception::Exec => e
+          Chef::Log.info("Error installing gem: #{r.package_name} version: #{r.version}")
+          raise e
+        end
       end
     end
   end
@@ -70,6 +76,12 @@ class CachedDeploy
         return true
       end
     end
+    false
+  end
+  
+  def check_current_revision_and_noop_if_same(newrev)
+    IO.read("#{latest_release}/REVISION").chomp == newrev
+  rescue
     false
   end
   
@@ -116,8 +128,9 @@ class CachedDeploy
   def migrate
     if @configuration[:migrate]
       run "ln -nfs #{shared_path}/config/database.yml #{latest_release}/config/database.yml"
-      Chef::Log.info "Migrating: cd #{latest_release} && RAILS_ENV=#{@configuration[:environment]} #{@configuration[:migration_command]}"
-      Chef::Log.info run("cd #{latest_release} && RAILS_ENV=#{@configuration[:environment]} #{@configuration[:migration_command]}")
+      Chef::Log.info "Migrating: cd #{latest_release} && RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} su #{user} -c #{@configuration[:migration_command]}"
+      Chef::Log.info run("chown -R #{user}:#{user} #{latest_release}")
+      Chef::Log.info run("cd #{latest_release} && RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} su #{user} -c #{@configuration[:migration_command]}")
     end
   end
   
