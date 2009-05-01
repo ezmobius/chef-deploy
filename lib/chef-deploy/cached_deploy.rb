@@ -90,7 +90,7 @@ class CachedDeploy
   def callback(what)
     if File.exist?("#{latest_release}/deploy/#{what}.rb")
       Chef::Log.info "running deploy hook: #{latest_release}/deploy/#{what}.rb"
-      Chef::Log.info run("cd #{latest_release} && ruby deploy/#{what}.rb #{@configuration[:environment]} #{@configuration[:role]}")
+      Chef::Log.info run("cd #{latest_release} && sudo -u #{user} ruby deploy/#{what}.rb #{@configuration[:environment]} #{@configuration[:role]}")
     end
   end
   
@@ -128,9 +128,9 @@ class CachedDeploy
   def migrate
     if @configuration[:migrate]
       run "ln -nfs #{shared_path}/config/database.yml #{latest_release}/config/database.yml"
-      Chef::Log.info "Migrating: cd #{latest_release} && RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} su #{user} -c #{@configuration[:migration_command]}"
+      Chef::Log.info "Migrating: cd #{latest_release} && RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} sudo -u #{user} #{@configuration[:migration_command]}"
       Chef::Log.info run("chown -R #{user}:#{user} #{latest_release}")
-      Chef::Log.info run("cd #{latest_release} && RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} su #{user} -c #{@configuration[:migration_command]}")
+      Chef::Log.info run("cd #{latest_release} && RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} sudo -u #{user} #{@configuration[:migration_command]}")
     end
   end
   
