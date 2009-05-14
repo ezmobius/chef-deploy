@@ -13,7 +13,7 @@ class Git
   end
   
   def git
-    "git"
+    configuration[:git_ssh_wrapper] ? "GIT_SSH=#{configuration[:git_ssh_wrapper]} git" : 'git'
   end
   
   def respository

@@ -9,14 +9,19 @@ class CachedDeploy
   def deploy
     @configuration[:release_path] = "#{@configuration[:deploy_to]}/releases/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}"
     if @configuration[:revision] == ''
-       @configuration[:revision] = source.query_revision(@configuration[:branch]) {|cmd| run cmd}
+       @configuration[:revision] = source.query_revision(@configuration[:branch]) {|cmd| run "#{cmd}"}
     end
-    return if check_current_revision_and_noop_if_same(@configuration[:revision])
+    
+    if check_current_revision_and_noop_if_same(@configuration[:revision])
+      symlink
+      return
+    end
+    
     Chef::Log.info "deploying branch: #{@configuration[:branch]} rev: #{@configuration[:revision]}"
     Chef::Log.info "updating the cached checkout"
-    run(update_repository_cache)
+    chef_run(update_repository_cache)
     Chef::Log.info "copying the cached version to #{configuration[:release_path]}"
-    run(copy_repository_cache)
+    chef_run(copy_repository_cache)
     install_gems
     callback(:before_migrate)
     migrate
@@ -31,52 +36,8 @@ class CachedDeploy
   def restart
     unless @configuration[:restart_command].empty?
       Chef::Log.info "restarting app: #{latest_release}"
-      Chef::Log.info run("cd #{current_path} && #{@configuration[:restart_command]}")
+      chef_run("cd #{current_path} && sudo -u #{user} RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} #{@configuration[:restart_command]}")
     end
-  end
-  
-  def install_gems
-    if File.exist?("#{latest_release}/gems.yml")
-      gems = YAML.load(IO.read("#{latest_release}/gems.yml"))
-      resources = []
-      gems.each do |g|
-        next if has_gem?(g[:name], g[:version])
-        r = Chef::Resource::GemPackage.new(g[:name], nil, @configuration[:node])
-        r.version g[:version]
-        r.source "http://gems.github.com"
-        resources << r
-      end
-      resources.each do |r|
-        begin
-          r.run_action(:install)
-        rescue Chef::Exception::Exec => e
-          Chef::Log.info("Error installing gem: #{r.package_name} version: #{r.version}")
-          raise e
-        end
-      end
-    end
-  end
-  
-  def has_gem?(name, version=nil)
-    if !$GEM_LIST_DEPLOY
-      gems = {}
-      `gem list --local`.each_line do |line|
-        gems[$1.to_sym] = $2.split(/, /) if line =~ /^(.*) \(([^\)]*)\)$/
-      end
-      $GEM_LIST_DEPLOY = gems
-    end
-    if $GEM_LIST_DEPLOY[name.to_sym]
-      if version
-        if $GEM_LIST_DEPLOY[name.to_sym].include?(version) 
-          Chef::Log.info("Gem: #{name}:#{version} already installed, skipping")
-          return true
-        end  
-      else
-        Chef::Log.info("Gem: #{name} already installed, skipping")
-        return true
-      end
-    end
-    false
   end
   
   def check_current_revision_and_noop_if_same(newrev)
@@ -90,7 +51,7 @@ class CachedDeploy
   def callback(what)
     if File.exist?("#{latest_release}/deploy/#{what}.rb")
       Chef::Log.info "running deploy hook: #{latest_release}/deploy/#{what}.rb"
-      Chef::Log.info run("cd #{latest_release} && sudo -u #{user} ruby deploy/#{what}.rb #{@configuration[:environment]} #{@configuration[:role]}")
+      chef_run("cd #{latest_release} && sudo -u #{user} ruby deploy/#{what}.rb #{@configuration[:environment]} #{@configuration[:role]}")
     end
   end
   
@@ -127,10 +88,10 @@ class CachedDeploy
   
   def migrate
     if @configuration[:migrate]
-      run "ln -nfs #{shared_path}/config/database.yml #{latest_release}/config/database.yml"
-      Chef::Log.info "Migrating: cd #{latest_release} && RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} sudo -u #{user} #{@configuration[:migration_command]}"
-      Chef::Log.info run("chown -R #{user}:#{user} #{latest_release}")
-      Chef::Log.info run("cd #{latest_release} && RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} sudo -u #{user} #{@configuration[:migration_command]}")
+      chef_run "ln -nfs #{shared_path}/config/database.yml #{latest_release}/config/database.yml"
+      Chef::Log.info "Migrating: cd #{latest_release} && sudo -u #{user} RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} #{@configuration[:migration_command]}"
+      chef_run("chown -R #{user}:#{user} #{latest_release}")
+      chef_run("cd #{latest_release} && sudo -u #{user} RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} #{@configuration[:migration_command]}")
     end
   end
   
@@ -154,7 +115,7 @@ class CachedDeploy
     Chef::Log.info "symlinking and finishing deploy"
     symlink = false
     begin
-      run [ "chmod -R g+w #{release_to_link}",
+      chef_run [ "chmod -R g+w #{release_to_link}",
             "rm -rf #{release_to_link}/log #{release_to_link}/public/system #{release_to_link}/tmp/pids",
             "mkdir -p #{release_to_link}/tmp",
             "ln -nfs #{shared_path}/log #{release_to_link}/log",
@@ -167,18 +128,22 @@ class CachedDeploy
           ].join(" && ")
 
       symlink = true
-      run "rm -f #{current_path} && ln -nfs #{release_to_link} #{current_path} && chown -R #{user}:#{user} #{current_path}"
+      chef_run "rm -f #{current_path} && ln -nfs #{release_to_link} #{current_path} && chown -R #{user}:#{user} #{current_path}"
     rescue => e
-      run "rm -f #{current_path} && ln -nfs #{previous_release(release_to_link)} #{current_path} && chown -R #{user}:#{user} #{current_path}" if symlink
-      run "rm -rf #{release_to_link}"
+      chef_run "rm -f #{current_path} && ln -nfs #{previous_release(release_to_link)} #{current_path} && chown -R #{user}:#{user} #{current_path}" if symlink
+      chef_run "rm -rf #{release_to_link}"
       raise e
     end
   end
   
   def run(cmd)
-    res = `#{cmd}`
+    res = `#{cmd} 2>&1`
     raise(ChefDeployFailure, res) unless $? == 0
     res
+  end
+  
+  def chef_run(cmd)
+    Chef::Mixin::Command.run_command(:command => cmd)
   end
   
   # :repository_cache
@@ -199,15 +164,54 @@ class CachedDeploy
   end
   
   def source
-    #@source ||= case configuration[:scm]
-    #when 'git'
-      Git.new configuration
-    #when 'svn'
-    #  Subversion.new configuration
-    #end
+    @source ||= Git.new(configuration)
   end
 
   private
+
+    def install_gems
+      if File.exist?("#{latest_release}/gems.yml")
+        gems = YAML.load(IO.read("#{latest_release}/gems.yml"))
+        resources = []
+        gems.each do |g|
+          next if has_gem?(g[:name], g[:version])
+          r = Chef::Resource::GemPackage.new(g[:name], nil, @configuration[:node])
+          r.version g[:version]
+          r.source "http://gems.github.com"
+          resources << r
+        end
+        resources.each do |r|
+          begin
+            r.run_action(:install)
+          rescue Chef::Exception::Exec => e
+            Chef::Log.info("Error installing gem: #{r.package_name} version: #{r.version}")
+            raise e
+          end
+        end
+      end
+    end
+    
+    def has_gem?(name, version=nil)
+      if !$GEM_LIST_DEPLOY
+        gems = {}
+        `gem list --local`.each_line do |line|
+          gems[$1.to_sym] = $2.split(/, /) if line =~ /^(.*) \(([^\)]*)\)$/
+        end
+        $GEM_LIST_DEPLOY = gems
+      end
+      if $GEM_LIST_DEPLOY[name.to_sym]
+        if version
+          if $GEM_LIST_DEPLOY[name.to_sym].include?(version) 
+            Chef::Log.info("Gem: #{name}:#{version} already installed, skipping")
+            return true
+          end  
+        else
+          Chef::Log.info("Gem: #{name} already installed, skipping")
+          return true
+        end
+      end
+      false
+    end
 
     def repository_cache
       File.join(configuration[:shared_path], configuration[:repository_cache] || "cached-copy")
@@ -215,8 +219,8 @@ class CachedDeploy
 
     def update_repository_cache
       command = "if [ -d #{repository_cache} ]; then " +
-        "#{source.sync(revision, repository_cache)}; " +
-        "else #{source.checkout(revision, repository_cache)}; fi"
+        "sudo -u #{user} #{source.sync(revision, repository_cache)}; " +
+        "else sudo -u #{user} #{source.checkout(revision, repository_cache)}; fi"
       command
     end
 

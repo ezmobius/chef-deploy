@@ -1,6 +1,3 @@
-require 'capistrano/recipes/deploy/scm/base'
-require 'yaml'
-
 class Subversion
 
   def initialize(opts={})

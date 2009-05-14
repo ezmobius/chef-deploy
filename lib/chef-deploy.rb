@@ -135,6 +135,14 @@ class Chef
           :kind_of => [ String ]
         )
       end
+      
+      def git_ssh_wrapper(arg=nil)
+        set_or_return(
+          :git_ssh_wrapper,
+          arg,
+          :kind_of => [ String ]
+        )
+      end
  
     end
   end
@@ -148,7 +156,7 @@ class Chef
         @dep = CachedDeploy.new  :user       => @new_resource.user,
                                 :role       => @new_resource.role,
                                 :branch     => (@new_resource.branch || 'HEAD'),
-                                :restart_command => @new_resource.restart_command,
+                                :restart_command => (@new_resource.restart_command || ""),
                                 :repository => @new_resource.repo,
                                 :environment => @new_resource.environment,
                                 :migration_command => @new_resource.migration_command,
@@ -160,7 +168,8 @@ class Chef
                                 :git_enable_submodules => @new_resource.enable_submodules,
                                 :git_shallow_clone  => @new_resource.shallow_clone,
                                 :node => @node,
-                                :new_resource => @new_resource
+                                :new_resource => @new_resource,
+                                :git_ssh_wrapper => @git_ssh_wrapper
       end
       
       def action_deploy
