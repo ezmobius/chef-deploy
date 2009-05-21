@@ -4,21 +4,43 @@ A gem that provides resources and providers for deploying ruby web apps from che
 
 
 Uses the same directory layout as capistrano and steals the git remote cached deploy strategy 
-from cap and adapts it to work without cap and under chef
+from cap and adapts it to work without cap and under chef. Not all options are required but they 
+are all shown here as an example.
 
- deploy "/data/#{app}" do
+ deploy "/data/myrackapp" do
    repo "git://github.com/engineyard/rack-app.git"
    branch "HEAD"
    user "ez"
+   role "app_master"
    enable_submodules true
    migrate true
    migration_command "rake db:migrate"
    environment "production"
    shallow_clone true
    revision '0xbeadbeef'
+   restart_command "touch tmp/restart.txt" # "monit restart all -g foo", etc.
    action :deploy # or :rollback
  end
 
 
-Currently only supports doing the cached git checkout, rsyncing it into place and doing the symlink dance.
-Does not restart servers or have hooks(yet)
+Chef-deploy is backwards compatible with capistrano in the fact that it uses the same exact filesystem layout.
+You can deploy with cap on top of a chef-deploy system and visca-versca(sic?).
+
+Chef-deploy hooks:
+
+If you create a APP_ROOT/deploy directory in your app you can place named hook files in there that will be triggered
+at the appropriate times during the deploy. the hooks are defined as follows:
+
+APP_ROOT/
+  deploy/
+    before_migrate.rb
+    before_symlink.rb
+    before_restart.rb
+    after_restart.rb
+
+These scripts will be called with two command line params in ARGV:
+
+ruby before_migrate.rb production app_master
+
+Where ARGV[0] is the RAILS_ENV, MERB_ENV or RACK_ENV and ARGV[1] is the role passed in to the deploy resource, this 
+can be used to identify certain servers as database, application, cache, etc roles so you can act accordingly
