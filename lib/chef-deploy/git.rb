@@ -13,7 +13,9 @@ class Git
   end
   
   def git
-    configuration[:git_ssh_wrapper] ? "GIT_SSH=#{configuration[:git_ssh_wrapper]} git" : 'git'
+    res = configuration[:git_ssh_wrapper] ? "GIT_SSH=#{configuration[:git_ssh_wrapper]} git" : 'git'
+    res = "sudo -u #{configuration[:user]} #{res}" if configuration[:user]
+    res
   end
   
   def respository

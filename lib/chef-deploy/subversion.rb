@@ -85,8 +85,14 @@ class Subversion
       "-q"
     end
     
+    def svn
+      res = "svn"
+      res = "sudo -u #{config[:user]} #{res}" if config[:user]
+      res
+    end        
+    
     def scm(*args)
-      ['svn', *args].compact.join(" ")
+      [svn, *args].compact.join(" ")
     end
 
     def svn_password_prompt

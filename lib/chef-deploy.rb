@@ -80,6 +80,14 @@ class Chef
         )
       end
       
+      def group(arg=nil)
+        set_or_return(
+          :group,
+          arg,
+          :kind_of => [ String ]
+        )
+      end      
+      
       def enable_submodules(arg=false)
         set_or_return(
           :enable_submodules,
@@ -154,6 +162,7 @@ class Chef
         FileUtils.mkdir_p "#{@new_resource.name}/shared"
         FileUtils.mkdir_p "#{@new_resource.name}/releases"
         @dep = CachedDeploy.new  :user       => @new_resource.user,
+                                :group      => @new_resource.group,
                                 :role       => @new_resource.role,
                                 :branch     => (@new_resource.branch || 'HEAD'),
                                 :restart_command => (@new_resource.restart_command || ""),
@@ -185,6 +194,7 @@ class Chef
         @dep.rollback
         Chef::Log.level(Chef::Config[:log_level])
       end
+      
     end
   end
 end

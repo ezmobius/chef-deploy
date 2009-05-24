@@ -17,6 +17,9 @@ class CachedDeploy
       return
     end
     
+    Chef::Log.info "ensuring proper ownership"
+    chef_run("chown -R #{user}:#{group} #{@configuration[:deploy_to]}")    
+    
     Chef::Log.info "deploying branch: #{@configuration[:branch]} rev: #{@configuration[:revision]}"
     Chef::Log.info "updating the cached checkout"
     chef_run(update_repository_cache)
@@ -90,13 +93,17 @@ class CachedDeploy
     if @configuration[:migrate]
       chef_run "ln -nfs #{shared_path}/config/database.yml #{latest_release}/config/database.yml"
       Chef::Log.info "Migrating: cd #{latest_release} && sudo -u #{user} RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} #{@configuration[:migration_command]}"
-      chef_run("chown -R #{user}:#{user} #{latest_release}")
+      chef_run("chown -R #{user}:#{group} #{latest_release}")
       chef_run("cd #{latest_release} && sudo -u #{user} RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} #{@configuration[:migration_command]}")
     end
   end
   
   def user
     @configuration[:user] || 'nobody'
+  end
+  
+  def group
+    @configuration[:group] || user
   end
   
   def current_path
@@ -124,13 +131,13 @@ class CachedDeploy
             "ln -nfs #{shared_path}/system #{release_to_link}/public/system",
             "ln -nfs #{shared_path}/pids #{release_to_link}/tmp/pids",
             "ln -nfs #{shared_path}/config/database.yml #{release_to_link}/config/database.yml",
-            "chown -R #{user}:#{user} #{release_to_link}"
+            "chown -R #{user}:#{group} #{release_to_link}"
           ].join(" && ")
 
       symlink = true
-      chef_run "rm -f #{current_path} && ln -nfs #{release_to_link} #{current_path} && chown -R #{user}:#{user} #{current_path}"
+      chef_run "rm -f #{current_path} && ln -nfs #{release_to_link} #{current_path} && chown -R #{user}:#{group} #{current_path}"
     rescue => e
-      chef_run "rm -f #{current_path} && ln -nfs #{previous_release(release_to_link)} #{current_path} && chown -R #{user}:#{user} #{current_path}" if symlink
+      chef_run "rm -f #{current_path} && ln -nfs #{previous_release(release_to_link)} #{current_path} && chown -R #{user}:#{group} #{current_path}" if symlink
       chef_run "rm -rf #{release_to_link}"
       raise e
     end
@@ -219,8 +226,8 @@ class CachedDeploy
 
     def update_repository_cache
       command = "if [ -d #{repository_cache} ]; then " +
-        "sudo -u #{user} #{source.sync(revision, repository_cache)}; " +
-        "else sudo -u #{user} #{source.checkout(revision, repository_cache)}; fi"
+        "#{source.sync(revision, repository_cache)}; " +
+        "else #{source.checkout(revision, repository_cache)}; fi"
       command
     end
 
