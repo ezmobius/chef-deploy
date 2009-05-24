@@ -88,7 +88,7 @@ class Chef
         )
       end      
       
-      def enable_submodules(arg=false)
+      def enable_submodules(arg=nil)
         set_or_return(
           :enable_submodules,
           arg,
