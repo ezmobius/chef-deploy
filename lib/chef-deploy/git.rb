@@ -102,7 +102,12 @@ class Git
     raise ArgumentError, "Deploying remote branches is no longer supported.  Specify the remote branch as a local branch for the git repository you're deploying from (ie: '#{revision.gsub('origin/', '')}' rather than '#{revision}')." if revision =~ /^origin\//
     return revision if revision =~ /^[0-9a-f]{40}$/
     command = scm('ls-remote', configuration[:repository], revision)
-    result = yield(command)
+    result = nil
+    begin
+      result = yield(command)
+    rescue Exception
+      raise obvious_error("Could not access the remote Git repository. If this is a private repository, please verify that the deploy key for your application has been added to your remote Git account.")
+    end
     rev, ref = result.split(/[\t\n]/)
     newrev = nil
     if ref.sub(/refs\/.*?\//, '').strip == revision
@@ -130,5 +135,14 @@ class Git
     # command-line switch for "quiet" ("-q").
     def verbose
       nil#configuration[:scm_verbose] ? nil : "-q"
+    end
+
+    # Build an error string that stands out in a log file
+    def obvious_error(message)
+      "#{stars}\n#{message}#{stars}"
+    end
+
+    def stars
+      ("\n"+'*'*80)*2
     end
 end
