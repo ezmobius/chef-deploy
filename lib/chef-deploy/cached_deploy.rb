@@ -26,6 +26,9 @@ class CachedDeploy
     Chef::Log.info "copying the cached version to #{configuration[:release_path]}"
     chef_run(copy_repository_cache)
     install_gems
+    
+    chef_run("chown -R #{user}:#{group} #{@configuration[:deploy_to]}")    
+    
     callback(:before_migrate)
     migrate
     callback(:before_symlink)
