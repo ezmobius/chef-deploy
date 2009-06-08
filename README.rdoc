@@ -7,6 +7,8 @@ Uses the same directory layout as capistrano and steals the git remote cached de
 from cap and adapts it to work without cap and under chef. Not all options are required but they 
 are all shown here as an example.
 
+ require 'chef-deploy'
+
  deploy "/data/myrackapp" do
    repo "git://github.com/engineyard/rack-app.git"
    branch "HEAD"
