@@ -182,17 +182,21 @@ class Chef
       end
       
       def action_deploy
-        Chef::Log.level(:debug)
-        Chef::Log.info "Running a new deploy\nto: #{@new_resource.name}\nrepo: #{@new_resource.repo}"
-        @dep.deploy
-        Chef::Log.level(Chef::Config[:log_level])
+        Dir.chdir(@new_resource.name) do
+          Chef::Log.level(:debug)
+          Chef::Log.info "Running a new deploy\nto: #{@new_resource.name}\nrepo: #{@new_resource.repo}"
+          @dep.deploy
+          Chef::Log.level(Chef::Config[:log_level])
+        end
       end
       
       def action_rollback
-        Chef::Log.level(:debug)
-        Chef::Log.info "Rolling back deploy\nto: #{@new_resource.name}\nrepo: #{@new_resource.repo}"
-        @dep.rollback
-        Chef::Log.level(Chef::Config[:log_level])
+        Dir.chdir(@new_resource.name) do
+          Chef::Log.level(:debug)
+          Chef::Log.info "Rolling back deploy\nto: #{@new_resource.name}\nrepo: #{@new_resource.repo}"
+          @dep.rollback
+          Chef::Log.level(Chef::Config[:log_level])
+        end
       end
       
     end

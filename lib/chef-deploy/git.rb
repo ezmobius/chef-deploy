@@ -105,8 +105,8 @@ class Git
     result = nil
     begin
       result = yield(command)
-    rescue Exception
-      raise obvious_error("Could not access the remote Git repository. If this is a private repository, please verify that the deploy key for your application has been added to your remote Git account.")
+    rescue ChefDeployFailure => e
+      raise obvious_error("Could not access the remote Git repository. If this is a private repository, please verify that the deploy key for your application has been added to your remote Git account.", e)
     end
     rev, ref = result.split(/[\t\n]/)
     newrev = nil
@@ -138,8 +138,8 @@ class Git
     end
 
     # Build an error string that stands out in a log file
-    def obvious_error(message)
-      "#{stars}\n#{message}#{stars}"
+    def obvious_error(message, e)
+      "#{stars}\n#{message}\n#{stars}\n#{e.message}#{stars}"
     end
 
     def stars
