@@ -13,6 +13,8 @@ class CachedDeploy
     end
     
     if check_current_revision_and_noop_if_same(@configuration[:revision])
+      Chef::Log.info "Revision is already deployed, running migrations"
+      migrate
       symlink
       return
     end
