@@ -1,3 +1,4 @@
+require File.join(File.dirname(__FILE__), 'chef-deploy/subversion')
 require File.join(File.dirname(__FILE__), 'chef-deploy/git')
 require File.join(File.dirname(__FILE__), 'chef-deploy/cached_deploy')
 
@@ -151,6 +152,30 @@ class Chef
           :kind_of => [ String ]
         )
       end
+      
+      def scm(arg=nil)
+        set_or_return(
+          :scm,
+          arg,
+          :kind_of => [ String ]
+        )
+      end
+ 
+      def svn_username(arg=nil)
+        set_or_return(
+          :svn_username,
+          arg,
+          :kind_of => [ String ]
+        )
+      end
+ 
+      def svn_password(arg=nil)
+        set_or_return(
+          :svn_password,
+          arg,
+          :kind_of => [ String ]
+        )
+      end
  
     end
   end
@@ -161,24 +186,27 @@ class Chef
       def load_current_resource
         FileUtils.mkdir_p "#{@new_resource.name}/shared"
         FileUtils.mkdir_p "#{@new_resource.name}/releases"
-        @dep = CachedDeploy.new  :user       => @new_resource.user,
-                                :group      => @new_resource.group,
-                                :role       => @new_resource.role,
-                                :branch     => (@new_resource.branch || 'HEAD'),
-                                :restart_command => (@new_resource.restart_command || ""),
-                                :repository => @new_resource.repo,
-                                :environment => @new_resource.environment,
-                                :migration_command => @new_resource.migration_command,
-                                :migrate => @new_resource.migrate,
-                                :deploy_to  => @new_resource.name,
-                                :repository_cache  => @new_resource.repository_cache,
-                                :copy_exclude  => @new_resource.copy_exclude,
-                                :revision  => (@new_resource.revision || ''),
+        @dep = CachedDeploy.new :user                  => @new_resource.user,
+                                :group                 => @new_resource.group,
+                                :role                  => @new_resource.role,
+                                :branch                => (@new_resource.branch || 'HEAD'),
+                                :restart_command       => (@new_resource.restart_command || ""),
+                                :repository            => @new_resource.repo,
+                                :environment           => @new_resource.environment,
+                                :migration_command     => @new_resource.migration_command,
+                                :migrate               => @new_resource.migrate,
+                                :deploy_to             => @new_resource.name,
+                                :repository_cache      => @new_resource.repository_cache,
+                                :copy_exclude          => @new_resource.copy_exclude,
+                                :revision              => (@new_resource.revision || ''),
                                 :git_enable_submodules => @new_resource.enable_submodules,
-                                :git_shallow_clone  => @new_resource.shallow_clone,
-                                :node => @node,
-                                :new_resource => @new_resource,
-                                :git_ssh_wrapper => @git_ssh_wrapper
+                                :git_shallow_clone     => @new_resource.shallow_clone,
+                                :svn_username          => @new_resource.svn_username,
+                                :svn_password          => @new_resource.svn_password,
+                                :scm                   => @new_resource.scm || 'git',
+                                :node                  => @node,
+                                :new_resource          => @new_resource,
+                                :git_ssh_wrapper       => @git_ssh_wrapper
       end
       
       def action_deploy

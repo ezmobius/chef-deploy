@@ -46,3 +46,7 @@ ruby before_migrate.rb production app_master
 
 Where ARGV[0] is the RAILS_ENV, MERB_ENV or RACK_ENV and ARGV[1] is the role passed in to the deploy resource, this 
 can be used to identify certain servers as database, application, cache, etc roles so you can act accordingly
+
+Using subversion:
+
+In your deploy block, simply add: scm 'subversion' (as well as svn_username and svn_password, if needed). Obviously, git-specific options like enable_submodules can be removed as they're not applicable.

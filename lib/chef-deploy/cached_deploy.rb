@@ -176,7 +176,12 @@ class CachedDeploy
   end
   
   def source
-    @source ||= Git.new(configuration)
+    @source ||= case configuration[:scm]
+    when 'git'
+      Git.new configuration
+    when 'svn'
+      Subversion.new configuration
+    end
   end
 
   private
