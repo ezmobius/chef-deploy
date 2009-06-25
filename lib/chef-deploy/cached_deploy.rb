@@ -127,7 +127,7 @@ class CachedDeploy
     Chef::Log.info "symlinking and finishing deploy"
     symlink = false
     begin
-      chef_run [ "chmod -R g+w #{release_to_link}",
+      chef_run [ "find #{release_to_link} ! -perm /g+w -exec chmod g+w \\{\\} \\;",
             "rm -rf #{release_to_link}/log #{release_to_link}/public/system #{release_to_link}/tmp/pids",
             "mkdir -p #{release_to_link}/tmp",
             "ln -nfs #{shared_path}/log #{release_to_link}/log",
@@ -136,7 +136,7 @@ class CachedDeploy
             "ln -nfs #{shared_path}/system #{release_to_link}/public/system",
             "ln -nfs #{shared_path}/pids #{release_to_link}/tmp/pids",
             "ln -nfs #{shared_path}/config/database.yml #{release_to_link}/config/database.yml",
-            "chown -R #{user}:#{group} #{release_to_link}"
+            "find #{release_to_link} ! -group #{user} -o ! -user #{user} -exec chown #{user}:#{user} \\{\\} \\;"
           ].join(" && ")
 
       symlink = true
