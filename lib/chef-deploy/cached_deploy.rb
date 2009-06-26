@@ -13,6 +13,7 @@ class CachedDeploy
     end
     
     if check_current_revision_and_noop_if_same(@configuration[:revision])
+      migrate
       symlink
       return
     end
