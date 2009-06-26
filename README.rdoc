@@ -42,20 +42,20 @@ APP_ROOT/
 
 These scripts will be instance_eval'd in the context of the chef-deploy resource. This means that you will have certain commands and variables available to you in these hooks. For example:
 
-run "echo 'release_path: #{release_path}' >> #{shared_path}/logs.log"
-run "echo 'current_path: #{current_path}' >> #{shared_path}/logs.log"
-run "echo 'shared_path: #{shared_path}' >> #{shared_path}/logs.log"
-sudo "echo 'sudo works' >> /root/sudo.log"
+  run "echo 'release_path: #{release_path}' >> #{shared_path}/logs.log"
+  run "echo 'current_path: #{current_path}' >> #{shared_path}/logs.log"
+  run "echo 'shared_path: #{shared_path}' >> #{shared_path}/logs.log"
+  sudo "echo 'sudo works' >> /root/sudo.log"
 
 
 You have access to a run command and a sudo command. Both of these will run shell commands, run will run as your normal unix user that the app is deployed as and sudo will run as root for when you need more permissions.
 
 You will have variables like in capistrano:
 
-release_path: this is the full path to the current release:  /data/appname/releases/12345678
-shared_path: this is the path to the shared dir: /data/appname/shared
-current_path: this is the path to the currently symlinked release:  /data/appname/current
-node:  node is the full chef node object, this will have all of the JSON collected by ohai as well as any custom json you passed into your client run. THis way you can get at *any* data you have available to any of your chef recipes.
+  release_path: this is the full path to the current release:  /data/appname/releases/12345678
+  shared_path: this is the path to the shared dir: /data/appname/shared
+  current_path: this is the path to the currently symlinked release:  /data/appname/current
+  node:  node is the full chef node object, this will have all of the JSON collected by ohai as well as any custom json you passed into your client run. THis way you can get at *any* data you have available to any of your chef recipes.
 
 Using subversion:
 
