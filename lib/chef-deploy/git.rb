@@ -98,22 +98,22 @@ class Git
 
   # Getting the actual commit id, in case we were passed a tag
   # or partial sha or something - it will return the sha if you pass a sha, too
-  def query_revision(revision)
-    raise ArgumentError, "Deploying remote branches is no longer supported.  Specify the remote branch as a local branch for the git repository you're deploying from (ie: '#{revision.gsub('origin/', '')}' rather than '#{revision}')." if revision =~ /^origin\//
-    return revision if revision =~ /^[0-9a-f]{40}$/
-    command = scm('ls-remote', configuration[:repository], revision)
+  def query_revision(reference)
+    raise ArgumentError, "Deploying remote branches is no longer supported.  Specify the remote branch as a local branch for the git repository you're deploying from (ie: '#{reference.gsub('origin/', '')}' rather than '#{reference}')." if reference =~ /^origin\//
+    sha_hash = '[0-9a-f]{40}'
+    return reference if reference =~ /^#{sha_hash}$/     # it's already a sha
+    command = scm('ls-remote', configuration[:repository], reference)
     result = nil
     begin
       result = yield(command)
     rescue ChefDeployFailure => e
       raise obvious_error("Could not access the remote Git repository. If this is a private repository, please verify that the deploy key for your application has been added to your remote Git account.", e)
     end
-    rev, ref = result.split(/[\t\n]/)
-    newrev = nil
-    if ref.sub(/refs\/.*?\//, '').strip == revision
-      newrev = rev
+    unless result =~ /^(#{sha_hash})\s+(\S+)/
+      raise "Unable to resolve reference for '#{reference}' on repository '#{configuration[:repository]}'."
     end
-    raise "Unable to resolve revision for '#{revision}' on repository '#{configuration[:repository]}'." unless newrev =~ /^[0-9a-f]{40}$/
+    newrev = $1
+    newref = $2
     return newrev
   end
   

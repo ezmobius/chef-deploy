@@ -9,10 +9,11 @@ class CachedDeploy
   def deploy
     @configuration[:release_path] = "#{@configuration[:deploy_to]}/releases/#{Time.now.utc.strftime("%Y%m%d%H%M%S")}"
     if @configuration[:revision] == ''
-       @configuration[:revision] = source.query_revision(@configuration[:branch]) {|cmd| run "#{cmd}"}
+       @configuration[:revision] = source.query_revision(@configuration[:branch]) {|cmd| run_with_result "#{cmd}"}
     end
     
     if check_current_revision_and_noop_if_same(@configuration[:revision])
+      Chef::Log.info "Revision is already deployed, running migrations if there are any"
       migrate
       symlink
       return
@@ -24,7 +25,7 @@ class CachedDeploy
     Chef::Log.info "deploying branch: #{@configuration[:branch]} rev: #{@configuration[:revision]}"
     Chef::Log.info "updating the cached checkout"
     chef_run(update_repository_cache)
-    Chef::Log.info "copying the cached version to #{configuration[:release_path]}"
+    Chef::Log.info "copying the cached version to #{release_path}"
     chef_run(copy_repository_cache)
     install_gems
     
@@ -58,7 +59,7 @@ class CachedDeploy
   def callback(what)
     if File.exist?("#{latest_release}/deploy/#{what}.rb")
       Chef::Log.info "running deploy hook: #{latest_release}/deploy/#{what}.rb"
-      chef_run("cd #{latest_release} && sudo -u #{user} ruby deploy/#{what}.rb #{@configuration[:environment]} #{@configuration[:role]}")
+      instance_eval(IO.read("#{latest_release}/deploy/#{what}.rb"))
     end
   end
   
@@ -76,7 +77,7 @@ class CachedDeploy
   end
   
   def all_releases
-    `ls #{release_path}`.split("\n").sort.map{|r| File.join(release_path, r)}
+    `ls #{release_dir}`.split("\n").sort.map{|r| File.join(release_dir, r)}
   end
   
   def cleanup
@@ -118,8 +119,16 @@ class CachedDeploy
     configuration[:shared_path]
   end
   
-  def release_path
+  def release_dir
     "#{@configuration[:deploy_to]}/releases"
+  end
+  
+  def release_path
+    @configuration[:release_path]
+  end
+  
+  def node
+    @configuration[:node]
   end
   
   def symlink(release_to_link=latest_release)
@@ -147,13 +156,21 @@ class CachedDeploy
     end
   end
   
-  def run(cmd)
+  def run_with_result(cmd)
     res = `#{cmd} 2>&1`
     raise(ChefDeployFailure, res) unless $? == 0
     res
   end
   
   def chef_run(cmd)
+    Chef::Mixin::Command.run_command(:command => cmd)
+  end
+  
+  def run(cmd)
+    Chef::Mixin::Command.run_command(:command => cmd, :user => user)
+  end
+  
+  def sudo(cmd)
     Chef::Mixin::Command.run_command(:command => cmd)
   end
   
@@ -175,7 +192,12 @@ class CachedDeploy
   end
   
   def source
-    @source ||= Git.new(configuration)
+    @source ||= case configuration[:scm]
+    when 'git'
+      Git.new configuration
+    when 'svn'
+      Subversion.new configuration
+    end
   end
 
   private
@@ -237,10 +259,10 @@ class CachedDeploy
 
     def copy_repository_cache
       if copy_exclude.empty? 
-        return "cp -RPp #{repository_cache} #{configuration[:release_path]} && #{mark}"
+        return "cp -RPp #{repository_cache} #{release_path} && #{mark}"
       else
         exclusions = copy_exclude.map { |e| "--exclude=\"#{e}\"" }.join(' ')
-        return "rsync -lrpt #{exclusions} #{repository_cache}/* #{configuration[:release_path]} && #{mark}"
+        return "rsync -lrpt #{exclusions} #{repository_cache}/* #{release_path} && #{mark}"
       end
     end
     
@@ -249,7 +271,7 @@ class CachedDeploy
     end
     
     def mark
-      "(echo #{revision} > #{configuration[:release_path]}/REVISION)"
+      "(echo #{revision} > #{release_path}/REVISION)"
     end
     
     def copy_exclude

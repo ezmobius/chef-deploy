@@ -1,3 +1,5 @@
+require 'yaml'
+
 class Subversion
 
   def initialize(opts={})
@@ -27,13 +29,13 @@ class Subversion
   # Returns the command that will do an "svn update" to the given
   # revision, for the working copy at the given destination.
   def sync(revision, destination)
-    scm :update, arguments, verbose, authentication, "-r#{revision}", destination
+    scm :update, config[:arguments], verbose, authentication, "-r#{revision}", destination
   end
 
   # Returns the command that will do an "svn export" of the given revision
   # to the given destination.
   def export(revision, destination)
-    scm :export, arguments, verbose, authentication, "-r#{revision}", repository, destination
+    scm :export, config[:arguments], verbose, authentication, "-r#{revision}", repository, destination
   end
 
   # Returns the command that will do an "svn diff" for the two revisions.
@@ -72,15 +74,17 @@ class Subversion
     # switch, since Capistrano will check for that prompt in the output
     # and will respond appropriately.
     def authentication
-      username = config(:svn_username)
+      username = config[:svn_username]
       return "" unless username
-      result = "--username #{config(:svn_username)} "
-      result << "--password #{config(:svn_password)} "
+      result = "--username #{config[:svn_username]} "
+      result << "--password #{config[:svn_password]} "
       result
     end
 
     # If verbose output is requested, return nil, otherwise return the
     # command-line switch for "quiet" ("-q").
+    # FIXME: This is currently flipped logically since it doesn't check
+    # for any verbosity configuration flag
     def verbose
       "-q"
     end
@@ -96,6 +100,6 @@ class Subversion
     end
 
     def svn_password_prompt
-      config[:password]
+      config[:svn_password]
     end
 end
