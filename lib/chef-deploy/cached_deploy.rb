@@ -58,8 +58,10 @@ class CachedDeploy
   # before_restart
   def callback(what)
     if File.exist?("#{latest_release}/deploy/#{what}.rb")
-      Chef::Log.info "running deploy hook: #{latest_release}/deploy/#{what}.rb"
-      instance_eval(IO.read("#{latest_release}/deploy/#{what}.rb"))
+      Dir.chdir(latest_release) do
+        Chef::Log.info "running deploy hook: #{latest_release}/deploy/#{what}.rb"
+        instance_eval(IO.read("#{latest_release}/deploy/#{what}.rb"))
+      end
     end
   end
   
