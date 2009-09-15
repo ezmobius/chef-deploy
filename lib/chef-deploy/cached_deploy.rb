@@ -247,7 +247,8 @@ class CachedDeploy
     end
 
     def update_repository_cache
-      command = "if [ -d #{repository_cache} ]; then " +
+      command = "if [ -d #{repository_cache} ] &&" +
+        "git --git-dir #{repository_cache}/.git/ remote -v | grep -q #{configuration[:repository]}; then " +
         "#{source.sync(revision, repository_cache)}; " +
         "else #{source.checkout(revision, repository_cache)}; fi"
       command
