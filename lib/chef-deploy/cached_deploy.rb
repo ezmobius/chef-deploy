@@ -37,7 +37,7 @@ class CachedDeploy
   def restart
     unless @configuration[:restart_command].empty?
       Chef::Log.info "restarting app: #{latest_release}"
-      chef_run("cd #{current_path} && sudo -u #{user} RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} #{@configuration[:restart_command]}")
+      chef_run("cd #{current_path} && sudo -u #{user} INLINEDIR=/tmp RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} #{@configuration[:restart_command]}")
     end
   end
   
@@ -92,6 +92,7 @@ class CachedDeploy
   def migrate
     if @configuration[:migrate]
       chef_run "ln -nfs #{shared_path}/config/database.yml #{latest_release}/config/database.yml"
+      chef_run "ln -nfs #{shared_path}/log #{latest_release}/log"
       Chef::Log.info "Migrating: cd #{latest_release} && sudo -u #{user} RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} #{@configuration[:migration_command]}"
       chef_run("chown -R #{user}:#{group} #{latest_release}")
       chef_run("cd #{latest_release} && sudo -u #{user} RAILS_ENV=#{@configuration[:environment]} RACK_ENV=#{@configuration[:environment]} MERB_ENV=#{@configuration[:environment]} #{@configuration[:migration_command]}")
