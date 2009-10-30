@@ -117,7 +117,7 @@ class Chef
         set_or_return(
           :copy_exclude,
           arg,
-          :kind_of => [ String ]
+          :kind_of => [ Array ]
         )
       end
       
