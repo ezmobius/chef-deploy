@@ -31,9 +31,7 @@ class Git
       args << "--depth #{depth}"
     end
 
-    execute = []
-
-    execute << "rm -rf #{destination}"
+    execute = ["rm -rf #{destination}"]
 
     if args.empty?
       execute << "#{git} clone #{verbose} #{configuration[:repository]} #{destination}"
