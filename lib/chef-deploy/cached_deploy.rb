@@ -247,11 +247,18 @@ class CachedDeploy
     end
 
     def update_repository_cache
-      command = "if [ -d #{repository_cache} ] &&" +
-        "git --git-dir #{repository_cache}/.git/ remote -v | grep -q #{configuration[:repository]}; then " +
+      test = case configuration[:scm]
+             when 'git'
+               "git --git-dir #{repository_cache}/.git/ remote -v | grep -q #{configuration[:repository]}"
+             when 'svn'
+               repo_base_url = configuration[:repository].gsub(/\/branches*$|\/tags*$|\/trunk*$/, '')
+               "(cd #{repository_cache} && svn info | grep -q \"Repository Root:\" | grep -q #{repo_base_url})"
+             end
+
+      "if [ -d #{repository_cache} ] &&" +
+        "#{test}; then " +
         "#{source.sync(revision, repository_cache)}; " +
         "else #{source.checkout(revision, repository_cache)}; fi"
-      command
     end
 
     def copy_repository_cache
