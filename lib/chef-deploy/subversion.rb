@@ -55,10 +55,15 @@ class Subversion
   def query_revision(revision)
     return revision if revision =~ /^\d+$/
     command = scm(:info, repository, authentication, "-r#{revision}")
-    result = yield(command)
-    yaml = YAML.load(result)
-    raise "tried to run `#{command}' and got unexpected result #{result.inspect}" unless Hash === yaml
-    yaml['Last Changed Rev'] || yaml['Revision']
+    command_output = yield(command)
+    result = {}
+    command_output.each_line do |line|
+      key, value = line.split(/:/, 2)
+      result[key] = value if key && value
+    end
+    rev = result['Last Changed Rev'] || result['Revision']
+    raise "tried to run `#{command}' and got unexpected result #{command_output}" unless rev
+    rev
   end
 
   # Increments the given revision number and returns it.
