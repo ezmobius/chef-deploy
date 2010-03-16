@@ -41,12 +41,6 @@ class CachedDeploy
     end
   end
 
-  def check_current_revision_and_noop_if_same(newrev)
-    IO.read("#{latest_release}/REVISION").chomp == newrev
-  rescue
-    false
-  end
-
   # before_symlink
   # before_restart
   def callback(what)
