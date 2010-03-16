@@ -157,7 +157,12 @@ class CachedDeploy
   end
 
   def run(cmd)
-    Chef::Mixin::Command.run_command(:command => cmd, :user => user)
+    user_homedir = Etc.getpwnam(user).dir
+    Chef::Mixin::Command.run_command(
+      :command => cmd,
+      :user => user,
+      :environment => {"HOME" => user_homedir}
+      )
   end
 
   def sudo(cmd)
