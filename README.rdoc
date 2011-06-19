@@ -26,7 +26,7 @@ are all shown here as an example.
 
 
 Chef-deploy is backwards compatible with capistrano in the fact that it uses the same exact filesystem layout.
-You can deploy with cap on top of a chef-deploy system and visca-versca(sic?).
+You can deploy with cap on top of a chef-deploy system and vice versa.
 
 Chef-deploy hooks:
 
